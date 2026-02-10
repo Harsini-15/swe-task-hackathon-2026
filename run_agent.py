@@ -14,12 +14,15 @@ try:
 except ImportError:
     pass
 
+from datetime import datetime, timezone
+
 # Configuration - APIs should be provided via GitHub Secrets
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 TASK_ID = "internetarchive__openlibrary-c4eebe6677acc4629cb541a98d5e91311444f5d4"
+MODELS = ["claude-3-5-sonnet-20240620", "claude-3-5-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-3-sonnet-20240229"]
 
 def get_timestamp():
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat().split('.')[0] + "Z"
 
 def log_jsonl(entry):
     """Log actions to agent.log in strict JSONL format."""
@@ -98,18 +101,34 @@ Available tools: read_file, write_file, edit_file, run_bash.
     for iteration in range(10): # Max 10 turns
         log_jsonl({"timestamp": get_timestamp(), "type": "request", "content": messages[-1]['content']})
         
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=2048,
-            system=system_prompt,
-            messages=messages,
-            tools=[
-                {"name": "run_bash", "description": "Execute bash commands", "input_schema": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}},
-                {"name": "read_file", "description": "Read a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
-                {"name": "write_file", "description": "Write a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
-                {"name": "edit_file", "description": "Edit a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "old_str": {"type": "string"}, "new_str": {"type": "string"}}, "required": ["path", "old_str", "new_str"]}}
-            ]
-        )
+        response = None
+        last_error = ""
+        for model in MODELS:
+            try:
+                print(f"Calling Anthropic [{model}]...")
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=2048,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=[
+                        {"name": "run_bash", "description": "Execute bash commands", "input_schema": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}},
+                        {"name": "read_file", "description": "Read a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+                        {"name": "write_file", "description": "Write a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}},
+                        {"name": "edit_file", "description": "Edit a file", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "old_str": {"type": "string"}, "new_str": {"type": "string"}}, "required": ["path", "old_str", "new_str"]}}
+                    ]
+                )
+                break
+            except Exception as e:
+                last_error = str(e)
+                print(f"Model {model} failed: {last_error}")
+                if "not_found" in last_error.lower() or "404" in last_error:
+                    continue
+                else: break
+        
+        if not response:
+            print(f"Final failure: {last_error}")
+            break
         
         assistant_msg = response.content[0].text if response.content[0].type == 'text' else "[Tool Use]"
         print(f"Agent: {assistant_msg}")
