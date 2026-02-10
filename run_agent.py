@@ -99,6 +99,13 @@ def main():
 
     print("Step 1: Pre-verification (Expect Failure)")
     pre_out, _ = run_bash(test_cmd)
+    # Check for missing modules during pre-verification too
+    module_match = re.search(r"ModuleNotFoundError: No module named '([^']+)'", pre_out)
+    if module_match:
+        missing_module = module_match.group(1)
+        print(f"Pre-verif detected missing module: {missing_module}. Installing...")
+        run_bash(f"pip install {missing_module}")
+        pre_out, _ = run_bash(test_cmd)
     with open("pre_verification.log", "w") as f: f.write(pre_out)
 
     system_prompt = f"""You are an autonomous SWE. Fix the bug in OpenLibrary.
@@ -145,6 +152,12 @@ Reproduce failure with: {test_cmd}
 
     print("Step 2: Post-verification (Expect Success)")
     post_out, _ = run_bash(test_cmd)
+    # Final check for missing modules in case the agent triggered a new path
+    module_match = re.search(r"ModuleNotFoundError: No module named '([^']+)'", post_out)
+    if module_match:
+        missing_module = module_match.group(1)
+        run_bash(f"pip install {missing_module}")
+        post_out, _ = run_bash(test_cmd)
     with open("post_verification.log", "w") as f: f.write(post_out)
     
     diff, _ = run_bash("git diff", cwd="/testbed")

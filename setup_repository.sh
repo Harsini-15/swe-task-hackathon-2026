@@ -15,7 +15,8 @@ git checkout c4eebe6677acc4629cb541a98d5e91311444f5d4 -- openlibrary/tests/core/
 # CRITICAL dependency install
 echo "Installing base dependencies..."
 pip install --upgrade pip
-pip install web.py pytest-mock pyyaml anthropic requests inflect psycopg2-binary
+# Added simplejson, ujson, and cached-property which are common OpenLibrary/Infogami dependencies
+pip install web.py pytest-mock pyyaml anthropic requests inflect psycopg2-binary simplejson ujson cached-property
 # Infogami often needs to be installed from the source if pypi fails
 pip install git+https://github.com/internetarchive/infogami.git || pip install infogami || echo "Infogami install failed, continuing..."
 
