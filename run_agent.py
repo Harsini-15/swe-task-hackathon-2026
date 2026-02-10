@@ -110,10 +110,13 @@ def main():
 
     system_prompt = f"""You are an autonomous SWE. Fix the bug in OpenLibrary.
 Task: {task['description']}
-Requirement: Implement find_staged_or_pending in openlibrary/core/imports.py.
-Use STAGED_SOURCES = ('amazon', 'idb').
-Check local records before API calls.
-You MUST use 'edit_file' or 'write_file' to apply changes.
+Requirement: Implement find_staged_or_pending as a @classmethod within the ImportItem class in openlibrary/core/imports.py.
+Use STAGED_SOURCES = ('amazon', 'idb') as a global constant in that file.
+The method should:
+1. Accept identifiers as first argument.
+2. Accept sources (defaulting to STAGED_SOURCES) as second argument.
+3. Check local records (ImportItem.get_all) before any external API calls.
+You MUST use 'edit_file' to add this method to the ImportItem class.
 Reproduce failure with: {test_cmd}
 """
 
