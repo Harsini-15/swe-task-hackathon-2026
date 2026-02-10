@@ -44,22 +44,15 @@ tests:
     - openlibrary/tests/core/test_imports.py::TestImportItem::test_find_pending_returns_pending
     - openlibrary/tests/core/test_imports.py::TestBatchItem::test_add_items_legacy
 
-  # Test command
+  # Test command (Specific to the bug)
   test_command: |
-    cd /testbed && python -m pytest openlibrary/tests/core/test_imports.py -v
+    cd /testbed && python -m pytest openlibrary/tests/core/test_imports.py::TestImportItem::test_find_staged_or_pending -v
 
 # Technical Requirements
 requirements: |
-  - A fixed constant tuple should be introduced to represent a fixed set of source
-    identifiers, including 'amazon' and 'idb'.
-
-  - There should be a method to find staged or pending items, which constructs ia_id
-    values by combining each identifier with each source, and return, as a ResultSet,
-    all matching entries from the import_item table with a status of either 'staged'
-    or 'pending'.
-
-  - The ia_ids should have the form {source}:{identifier} for each source in sources
-    and identifier in identifiers.
+  - A fixed constant tuple STAGED_SOURCES = ('amazon', 'idb') should be introduced.
+  - Implement find_staged_or_pending(identifiers, sources=STAGED_SOURCES) in openlibrary/core/imports.py.
+  - It should query the import_item table for status 'staged' or 'pending' with ia_id in the format {source}:{identifier}.
 
 # Interface Specification
 interface: |
@@ -67,23 +60,9 @@ interface: |
   Name: find_staged_or_pending
   Path: openlibrary/core/imports.py
 
-  Inputs:
-    - identifiers (list[str]): List of identifier strings (e.g. ISBNs)
-    - sources (Iterable[str]): A list of source tags (defaults to STAGED_SOURCES)
-
-  Output:
-    Returns a ResultSet containing all rows from the import_item table whose ia_id
-    matches any of the generated {source}:{identifier} values and whose status is
-    either staged or pending.
-
-  Behavior:
-    Generates ia_id values by combining each source and identifier, then queries
-    the import_item table to return entries with status staged or pending that
-    match those IDs.
-
 # Docker Environment
 docker:
-  image: ghcr.io/swebench-hackathon/openlibrary-python312:latest
+  image: manojva/openlibrary-python312:latest
   workdir: /testbed
 
 # Files to Modify (Hint)
