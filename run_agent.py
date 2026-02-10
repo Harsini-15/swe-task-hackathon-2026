@@ -4,6 +4,7 @@ import json
 import time
 import subprocess
 import yaml
+import re
 from anthropic import Anthropic
 
 # Configuration
@@ -123,7 +124,16 @@ Reproduce failure with: {test_cmd}
             for tc in tool_calls:
                 n, a, tid = tc.name, tc.input, tc.id
                 print(f"Action: {n}")
-                if n == "run_bash": val, err = run_bash(a['command'])
+                if n == "run_bash": 
+                    val, err = run_bash(a['command'])
+                    # Autonomous Dependency Fix: If we see ModuleNotFoundError, try to install it
+                    module_match = re.search(r"ModuleNotFoundError: No module named '([^']+)'", val)
+                    if module_match:
+                        missing_module = module_match.group(1)
+                        print(f"Detected missing module: {missing_module}. Attempting install...")
+                        run_bash(f"pip install {missing_module}")
+                        # Retry the command once
+                        val, err = run_bash(a['command'])
                 elif n == "read_file": val, err = read_file(a['path'])
                 elif n == "write_file": val, err = write_file(a['path'], a['content'])
                 elif n == "edit_file": val, err = edit_file(a['path'], a['old_str'], a['new_str'])
